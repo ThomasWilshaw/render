@@ -14,7 +14,7 @@
 #define PASS 999999
 #define SCALE 100
 
-struct int2 {
+typedef struct {
     int x;
 	int y;
 }int2;
@@ -32,11 +32,18 @@ typedef struct {
 	int y;
 }Image;
 
+typedef struct {
+	int2 a;
+	int2 b;
+	int2 c;
+	int2 d;
+}Poly;
+
 void drawPoint(Image *i, int x, int y, int col);
 void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
          short BaseColor, short NumLevels, unsigned short IntensityBits);
-void drawQuad(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d);
-void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c);
+void drawQuad(Image *i, int colour, Poly *poly);
+void drawTri(Image *i, int colour, Poly *poly);
 void createCanvas(Image *i, FILE *f, int colour, int width, int height);
 void writeImage(FILE *f, Image *i);
 void matrixTests();
@@ -186,19 +193,19 @@ void writeImage(FILE *f, Image *i) //closes image
 	//free(image);
 }
 
-void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c)
+void drawTri(Image *i, int colour, Poly *poly)
 {
-    drawWuLine(i, a.y, a.x, b.y, b.x, colour, 256, 8);
-	drawWuLine(i, b.y, b.x, c.y, c.x, colour, 256, 8);
-	drawWuLine(i, c.y, c.x, a.y, a.x, colour, 256, 8);
+    drawWuLine(i, poly->a.y, poly->a.x, poly->b.y, poly->b.x, colour, 256, 8);
+	drawWuLine(i, poly->b.y, poly->b.x, poly->c.y, poly->c.x, colour, 256, 8);
+	drawWuLine(i, poly->c.y, poly->c.x, poly->a.y, poly->a.x, colour, 256, 8);
 }
 
-void drawQuad(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d)	
+void drawQuad(Image *i, int colour, Poly *poly)	
 {
-	drawWuLine(i, a.y, a.x, b.y, b.x, colour, 256, 8);
-	drawWuLine(i, b.y, b.x, c.y, c.x, colour, 256, 8);
-	drawWuLine(i, c.y, c.x, d.y, d.x, colour, 256, 8);
-    drawWuLine(i, d.y, d.x, a.y, a.x, colour, 256, 8);
+	drawWuLine(i, poly->a.y, poly->a.x, poly->b.y, poly->b.x, colour, 256, 8);
+	drawWuLine(i, poly->b.y, poly->b.x, poly->c.y, poly->c.x, colour, 256, 8);
+	drawWuLine(i, poly->c.y, poly->c.x, poly->d.y, poly->d.x, colour, 256, 8);
+    drawWuLine(i, poly->d.y, poly->d.x, poly->a.y, poly->a.x, colour, 256, 8);
 }
 
 void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
@@ -356,20 +363,30 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 	double off_y = im->y/2;
 	
 	for(j=0; j<(o->polynum); j++){
+		Poly poly;
 		polyverts = &o->polys[j*4];
 		//printf("polyverts =%d\n", *(polyverts));
 		if(*polyverts == PASS){
-			struct int2 a = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
-			struct int2 b = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
-			struct int2 c = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
+			poly.a.x = (transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x;
+			poly.a.y = (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y;
+			poly.b.x = (transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x;
+			poly.b.y = (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y;
+			poly.c.x = (transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x;
+			poly.c.y = (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y;
+			poly.d.x = PASS;
+			poly.d.y = PASS;
 			//printf("%d\n", c.y);
-			drawTri(im, colour, a, b, c);
+			drawTri(im, colour, &poly);
 		}else{
-			struct int2 a = {(transformed.verts[(*(polyverts)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts)-1)*4)+1]*SCALE)+off_y};
-			struct int2 b = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
-			struct int2 c = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
-			struct int2 d = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
-			drawQuad(im, colour, a, b, c, d);
+			poly.a.x = (transformed.verts[(*(polyverts)-1)*4]*SCALE)+off_x;
+			poly.a.y = (transformed.verts[((*(polyverts)-1)*4)+1]*SCALE)+off_y;
+			poly.b.x = (transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x;
+			poly.b.y = (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y;
+			poly.c.x = (transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x;
+			poly.c.y = (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y;
+			poly.d.x = (transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x;
+			poly.d.y = (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y;
+			drawQuad(im, colour, &poly);
 		}
 	}
 }
