@@ -32,17 +32,23 @@ struct double4 {
 	double w;
 }double4;
 
-void drawPoint(int **image, int x, int y, int col);
-void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
+typedef struct {
+	int **image;
+	int x;
+	int y;
+}Image;
+
+void drawPoint(Image *i, int x, int y, int col);
+void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
          short BaseColor, short NumLevels, unsigned short IntensityBits);
-void drawQuad(int **image, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d);
-void drawTri(int **image, int colour, struct int2 a, struct int2 b, struct int2 c);
-int ** createCanvas(FILE *f, int colour, int width, int height);
-void writeImage(FILE *f, int **image, int width, int height);
+void drawQuad(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d);
+void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c);
+void createCanvas(Image *i, FILE *f, int colour, int width, int height);
+void writeImage(FILE *f, Image *i);
 void matrixTests();
-void drawObject(int **image, int colour, int width, int height, Object *o, Matrix c);
+void drawObject(Image *i, int colour, Object *o, Matrix c);
 void objectInit(Object *o, int vertnum, int polynum);
-void drawFromFile(int **image, FILE *save, int width, int height, FILE *f);
+void drawFromFile(Image *i, FILE *save, FILE *f);
 int comConvert(char * com);
 int shapeConvert(char * com);
 
@@ -57,7 +63,9 @@ int main(int argc, char* argv[])
 
 	/*Create image*/
 	FILE *f = fopen("image.ppm", "w");
-	int **image = createCanvas(f, 255, 1024, 1024);
+	//int **image = createCanvas(f, 255, 1024, 1024);
+	Image image;
+	createCanvas(&image, f, 255, 1024, 1024);
 	
 	/*Create translation stack*/
 	stackT transformStack;
@@ -73,7 +81,7 @@ int main(int argc, char* argv[])
 				printf("Error, could not open file: %s\n", name);
 				exit(EXIT_FAILURE);
 			}
-			drawFromFile(image, f, 1024, 1024, file);
+			drawFromFile(&image, f, file);
 			fclose(file);
 			return 1;
 		}
@@ -99,27 +107,27 @@ int main(int argc, char* argv[])
 	C = scal(C, 1, 1, -1);
 	C = scal(C, 2, 2, 2);
 	stackPush(&transformStack, C);
-	drawObject(image, 0, 1024, 1024, &square, C);
+	drawObject(&image, 0, &square, C);
 	C = tran(C, 2, 0, 0);
-	drawObject(image, 0, 1024, 1024, &plane, C);
+	drawObject(&image, 0, &plane, C);
 	C = stackPop(&transformStack);
 	stackPush(&transformStack, C);
 	C = tran(C, 0, 2, 0);
-	drawObject(image, 0, 1024, 1024, &plane, C);
+	drawObject(&image, 0, &plane, C);
 	C = stackPop(&transformStack);
 	stackPush(&transformStack, C);
 	C = rot(C, 20, 3);
 	C = tran(C, 0, 0, 1);
-	drawObject(image, 0, 1024, 1024, &cube, C);
+	drawObject(&image, 0, &cube, C);
 	C = stackPop(&transformStack);
 	C = tran(C, 5, 0, 0);
 	C = rot(C, -15, 3);
-	drawObject(image, 0, 1024, 1024, &oct, C);
+	drawObject(&image, 0, &oct, C);
 	
 	
 	
 	/*Close image and save*/
-	writeImage(f, image, 1024, 1024);
+	writeImage(f, &image);
 	return 1;
 }
 
@@ -150,58 +158,57 @@ void matrixTests()
 	print_matrix(i);
 }
 
-int ** createCanvas(FILE *f, int colour, int width, int height)
+void createCanvas(Image *i, FILE *f, int colour, int width, int height)
 {
 	int x, y;
+	i->x = width;
+	i->y = height;
 	//FILE *f = fopen("file.ppm", "w");
 	if (f== NULL) {
 	    printf("Error opening\n");
 		exit(EXIT_FAILURE);
 	}
-	int **image;
-	image = (int **)malloc(width * sizeof(int));
+	i->image = (int **)malloc(width * sizeof(int));
 	for (x=0; x<width; x++)
-	    image[x] = (int *)malloc(height * sizeof(int));
+	    i->image[x] = (int *)malloc(height * sizeof(int));
 		
 	for (x=0; x<width; x++){
 	    for (y=0; y<height; y++)
-		    image[x][y] = colour;
+		    i->image[x][y] = colour;
 	}
 	
 	fprintf(f, "P2\n%d %d\n256\n", width, height);
-	
-	return image;
 }
 
-void writeImage(FILE *f, int **image, int width, int height) //closes image
+void writeImage(FILE *f, Image *i) //closes image
 {
 	int x, y;
-	for (x=0; x<width; x++){
-	    for (y=0; y<height; y++)
-		    fprintf(f, "%d ", image[x][y]);
+	for (x=0; x<(i->x); x++){
+	    for (y=0; y<(i->y); y++)
+		    fprintf(f, "%d ", i->image[x][y]);
 		fprintf(f, "\n");
 	}
 	printf("SAVING...\n");
 	fclose(f);
-	free(image);
+	//free(image);
 }
 
-void drawTri(int **image, int colour, struct int2 a, struct int2 b, struct int2 c)
+void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c)
 {
-    drawWuLine(image, a.y, a.x, b.y, b.x, colour, 256, 8);
-	drawWuLine(image, b.y, b.x, c.y, c.x, colour, 256, 8);
-	drawWuLine(image, c.y, c.x, a.y, a.x, colour, 256, 8);
+    drawWuLine(i, a.y, a.x, b.y, b.x, colour, 256, 8);
+	drawWuLine(i, b.y, b.x, c.y, c.x, colour, 256, 8);
+	drawWuLine(i, c.y, c.x, a.y, a.x, colour, 256, 8);
 }
 
-void drawQuad(int **image, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d)	
+void drawQuad(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d)	
 {
-	drawWuLine(image, a.y, a.x, b.y, b.x, colour, 256, 8);
-	drawWuLine(image, b.y, b.x, c.y, c.x, colour, 256, 8);
-	drawWuLine(image, c.y, c.x, d.y, d.x, colour, 256, 8);
-    drawWuLine(image, d.y, d.x, a.y, a.x, colour, 256, 8);
+	drawWuLine(i, a.y, a.x, b.y, b.x, colour, 256, 8);
+	drawWuLine(i, b.y, b.x, c.y, c.x, colour, 256, 8);
+	drawWuLine(i, c.y, c.x, d.y, d.x, colour, 256, 8);
+    drawWuLine(i, d.y, d.x, a.y, a.x, colour, 256, 8);
 }
 
-void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
+void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
          short BaseColor, short NumLevels, unsigned short IntensityBits)
 {
    unsigned short IntensityShift, ErrorAdj, ErrorAcc;
@@ -215,7 +222,7 @@ void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
    }
    /* Draw the initial pixel, which is always exactly intersected by
       the line and so needs no weighting */
-   drawPoint(pDC,X0, Y0, BaseColor);
+   drawPoint(i,X0, Y0, BaseColor);
 
    if ((DeltaX = X1 - X0) >= 0) {
       XDir = 1;
@@ -230,7 +237,7 @@ void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
       /* Horizontal line */
       while (DeltaX-- != 0) {
          X0 += XDir;
-         drawPoint(pDC,X0, Y0, BaseColor);
+         drawPoint(i,X0, Y0, BaseColor);
       }
       return;
    }
@@ -238,7 +245,7 @@ void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
       /* Vertical line */
       do {
          Y0++;
-         drawPoint(pDC,X0, Y0, BaseColor);
+         drawPoint(i,X0, Y0, BaseColor);
       } while (--DeltaY != 0);
       return;
    }
@@ -247,7 +254,7 @@ void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
       do {
          X0 += XDir;
          Y0++;
-         drawPoint(pDC,X0, Y0, BaseColor);
+         drawPoint(i,X0, Y0, BaseColor);
       } while (--DeltaY != 0);
       return;
    }
@@ -277,14 +284,14 @@ void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
             intensity weighting for this pixel, and the complement of the
             weighting for the paired pixel */
          Weighting = ErrorAcc >> IntensityShift;
-         drawPoint(pDC,X0, Y0, BaseColor + Weighting);
-         drawPoint(pDC,X0 + XDir, Y0,
+         drawPoint(i,X0, Y0, BaseColor + Weighting);
+         drawPoint(i,X0 + XDir, Y0,
                BaseColor + (Weighting ^ WeightingComplementMask));
       }
       /* Draw the final pixel, which is 
          always exactly intersected by the line
          and so needs no weighting */
-      drawPoint(pDC,X1, Y1, BaseColor);
+      drawPoint(i,X1, Y1, BaseColor);
       return;
    }
    /* It's an X-major line; calculate 16-bit fixed-point fractional part of a
@@ -304,26 +311,26 @@ void drawWuLine (int **pDC, short X0, short Y0, short X1, short Y1,
          intensity weighting for this pixel, and the complement of the
          weighting for the paired pixel */
       Weighting = ErrorAcc >> IntensityShift;
-      drawPoint(pDC,X0, Y0, BaseColor + Weighting);
-      drawPoint(pDC,X0, Y0 + 1,
+      drawPoint(i,X0, Y0, BaseColor + Weighting);
+      drawPoint(i,X0, Y0 + 1,
             BaseColor + (Weighting ^ WeightingComplementMask));
    }
    /* Draw the final pixel, which is always exactly intersected by the line
       and so needs no weighting */
-   drawPoint(pDC,X1, Y1, BaseColor);
+   drawPoint(i,X1, Y1, BaseColor);
 }
 
-void drawPoint(int **image, int x, int y, int col) 
+void drawPoint(Image *i, int x, int y, int col) 
 {
-    if ((unsigned)(x) <= (XTEST)){
-	    if ((unsigned)(y) <= (YTEST)){
-		    image[x][y] = col;
+    if ((unsigned)(x) <= (i->x)){
+	    if ((unsigned)(y) <= (i->y)){
+		    i->image[x][y] = col;
 		}
 	}
 	/*image[x][y] = col; */
 };
 
-void drawObject(int **image, int colour, int width, int height, Object *o, Matrix c)
+void drawObject(Image *im, int colour, Object *o, Matrix c)
 {
 	int i, j;
 	Object transformed;
@@ -352,8 +359,8 @@ void drawObject(int **image, int colour, int width, int height, Object *o, Matri
 	}
 	
 	int *polyverts;
-	double off_x = width/2;
-	double off_y = height/2;
+	double off_x = im->x/2;
+	double off_y = im->y/2;
 	
 	for(j=0; j<(o->polynum); j++){
 		polyverts = &o->polys[j*4];
@@ -363,18 +370,18 @@ void drawObject(int **image, int colour, int width, int height, Object *o, Matri
 			struct int2 b = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
 			struct int2 c = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
 			//printf("%d\n", c.y);
-			drawTri(image, colour, a, b, c);
+			drawTri(im, colour, a, b, c);
 		}else{
 			struct int2 a = {(transformed.verts[(*(polyverts)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts)-1)*4)+1]*SCALE)+off_y};
 			struct int2 b = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
 			struct int2 c = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
 			struct int2 d = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
-			drawQuad(image, colour, a, b, c, d);
+			drawQuad(im, colour, a, b, c, d);
 		}
 	}
 }
 
-void drawFromFile(int **image, FILE *save, int width, int height, FILE *f)
+void drawFromFile(Image *i, FILE *save, FILE *f)
 {
 	/*Line buffer*/
 	int bufferSize = 80;
@@ -456,7 +463,7 @@ void drawFromFile(int **image, FILE *save, int width, int height, FILE *f)
 						break;
 				}
 				if(pass){
-					drawObject(image, 0, width, height, &o, C);
+					drawObject(i, 0, &o, C);
 					objectDeInit(&o);
 				}else{
 					printf("Unknown object %s\n", com[1]);
@@ -468,7 +475,7 @@ void drawFromFile(int **image, FILE *save, int width, int height, FILE *f)
 		
 		free(com);
 	}
-	writeImage(save, image, 1024, 1024);
+	writeImage(save, i);
 }
 
 int comConvert(char *com){
