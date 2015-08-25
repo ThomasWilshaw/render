@@ -39,7 +39,7 @@ Object new_square()
 	Object square;
 	objectInit(&square, 4, 1);
 	double verts[16] = {1.0, 1.0, 0, 1.0, 1.0, -1.0, 0, 1.0, -1.0, -1.0, 0, 1.0, -1.0, 1.0, 0, 1.0};
-	int polys[4] = {1, 2, 3, 4};
+	int polys[4] = {4, 3, 2, 1};
 	memcpy(square.verts, verts, sizeof(verts));//VERY important!!!
 	memcpy(square.polys, polys, sizeof(polys));
 	return square;

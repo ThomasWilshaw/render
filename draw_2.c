@@ -11,12 +11,6 @@
 #include "stack.h"
 #include "objects.h"
 
-#define XMAX 1024
-#define YMAX 1024
-#define XDIFF XMAX
-#define YDIFF YMAX
-#define XTEST XMAX-1
-#define YTEST YMAX-1
 #define PASS 999999
 #define SCALE 100
 
@@ -63,7 +57,6 @@ int main(int argc, char* argv[])
 
 	/*Create image*/
 	FILE *f = fopen("image.ppm", "w");
-	//int **image = createCanvas(f, 255, 1024, 1024);
 	Image image;
 	createCanvas(&image, f, 255, 1024, 1024);
 	
@@ -322,8 +315,8 @@ void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
 
 void drawPoint(Image *i, int x, int y, int col) 
 {
-    if ((unsigned)(x) <= (i->x)){
-	    if ((unsigned)(y) <= (i->y)){
+    if ((unsigned)(x) <= (i->x)-1){
+	    if ((unsigned)(y) <= (i->y)-1){
 		    i->image[x][y] = col;
 		}
 	}
@@ -459,6 +452,10 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 						o = new_oct();
 						pass = 1;
 						break;
+					case 4:
+						o = new_square();
+						pass = 1;
+						break;
 					default:
 						break;
 				}
@@ -497,6 +494,7 @@ int shapeConvert(char * com)
 	if(strcmp(com, "CUBE") == 0) return 1;
 	if(strcmp(com, "PLANE") == 0) return 2;
 	if(strcmp(com, "OCT") == 0) return 3;
+	if(strcmp(com, "SQUARE") == 0) return 4;
 	
 	return 0;
 }
