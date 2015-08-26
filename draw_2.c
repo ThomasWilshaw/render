@@ -421,8 +421,8 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 	for(j=0; j<(o->polynum); j++){
 		Poly poly;
 		polyverts = &o->polys[j*4];
-		//printf("%d", *(polyverts+1));
-		//printf("x = %f\n", transformed.verts[((*polyverts-1)*4)]);
+		
+		//create polygon struct
 		if(*polyverts != PASS){
 			subset(poly.a, &transformed.verts[(*polyverts-1)*4], 4);
 			
@@ -430,6 +430,7 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 		subset(poly.b, &transformed.verts[(*(polyverts+1)-1)*4], 4);
 		subset(poly.c, &transformed.verts[(*(polyverts+2)-1)*4], 4);
 		subset(poly.d, &transformed.verts[(*(polyverts+3)-1)*4], 4);
+		//draw the poly
 		if(!cull(&poly)){
 			if(*polyverts == PASS){
 				struct int2 a = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
