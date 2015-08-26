@@ -14,7 +14,7 @@
 #define PASS 999999
 #define SCALE 100
 
-typedef struct {
+typedef struct int2 {
     int x;
 	int y;
 }int2;
@@ -33,17 +33,18 @@ typedef struct {
 }Image;
 
 typedef struct {
-	int2 a;
-	int2 b;
-	int2 c;
-	int2 d;
+	double a[4];
+	double b[4];
+	double c[4];
+	double d[4];
+	
 }Poly;
 
 void drawPoint(Image *i, int x, int y, int col);
 void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
          short BaseColor, short NumLevels, unsigned short IntensityBits);
-void drawQuad(Image *i, int colour, Poly *poly);
-void drawTri(Image *i, int colour, Poly *poly);
+void drawQuad(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d);
+void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c);
 void createCanvas(Image *i, FILE *f, int colour, int width, int height);
 void writeImage(FILE *f, Image *i);
 void matrixTests();
@@ -52,6 +53,7 @@ void objectInit(Object *o, int vertnum, int polynum);
 void drawFromFile(Image *i, FILE *save, FILE *f);
 int comConvert(char * com);
 int shapeConvert(char * com);
+void subset(double *dest, double *start, int size);
 
 int main(int argc, char* argv[])
 {
@@ -156,6 +158,19 @@ void matrixTests()
 	i = tran(i, 0, -1.41, 9);
 	//i = rot(i, -80, 1);
 	print_matrix(i);
+	
+	Matrix a;
+	Matrix b;
+	Matrix s;
+	a = new_matrix(2, 1);
+	b = new_matrix(2, 1);
+	s = new_matrix(2, 1);
+	double data3[2] = {1, 1};
+	a.t = data3;
+	b.t = data3;
+	a = matrix_scalar_mult(a, -1);
+	s = matrix_add(a, b);
+	print_matrix(s);
 }
 
 void createCanvas(Image *i, FILE *f, int colour, int width, int height)
@@ -193,19 +208,19 @@ void writeImage(FILE *f, Image *i) //closes image
 	//free(image);
 }
 
-void drawTri(Image *i, int colour, Poly *poly)
+void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c)
 {
-    drawWuLine(i, poly->a.y, poly->a.x, poly->b.y, poly->b.x, colour, 256, 8);
-	drawWuLine(i, poly->b.y, poly->b.x, poly->c.y, poly->c.x, colour, 256, 8);
-	drawWuLine(i, poly->c.y, poly->c.x, poly->a.y, poly->a.x, colour, 256, 8);
+    drawWuLine(i, a.y, a.x, b.y, b.x, colour, 256, 8);
+	drawWuLine(i, b.y, b.x, c.y, c.x, colour, 256, 8);
+	drawWuLine(i, c.y, c.x, a.y, a.x, colour, 256, 8);
 }
 
-void drawQuad(Image *i, int colour, Poly *poly)	
+void drawQuad(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c, struct int2 d)	
 {
-	drawWuLine(i, poly->a.y, poly->a.x, poly->b.y, poly->b.x, colour, 256, 8);
-	drawWuLine(i, poly->b.y, poly->b.x, poly->c.y, poly->c.x, colour, 256, 8);
-	drawWuLine(i, poly->c.y, poly->c.x, poly->d.y, poly->d.x, colour, 256, 8);
-    drawWuLine(i, poly->d.y, poly->d.x, poly->a.y, poly->a.x, colour, 256, 8);
+	drawWuLine(i, a.y, a.x, b.y, b.x, colour, 256, 8);
+	drawWuLine(i, b.y, b.x, c.y, c.x, colour, 256, 8);
+	drawWuLine(i, c.y, c.x, d.y, d.x, colour, 256, 8);
+    drawWuLine(i, d.y, d.x, a.y, a.x, colour, 256, 8);
 }
 
 void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
@@ -330,6 +345,47 @@ void drawPoint(Image *i, int x, int y, int col)
 	/*image[x][y] = col; */
 };
 
+void subset(double *dest, double *start, int size)
+{
+	int i;
+	for(i=0; i<size; i++){
+		dest[i] = *(start+i);
+	}
+}
+
+int cull(Poly *poly)
+{
+	Matrix a;
+	Matrix b;
+	Matrix c;
+	Matrix crossA, crossB;
+	Matrix n;
+	a = new_matrix(4, 1);
+	b = new_matrix(4, 1);
+	c = new_matrix(4, 1);
+	crossA = new_matrix(4, 1);
+	crossB = new_matrix(4, 1);
+	n = new_matrix(4, 1);
+	
+	a.t = poly->b;
+	b.t = poly->c;
+	c.t = poly->d;
+	a = matrix_scalar_mult(a, -1);
+	crossA = matrix_add(b, a);
+	crossB = matrix_add(c, a);
+
+	n = matrix_cross(crossA, crossB);
+	
+	
+	double cross;
+	cross = ((a.t[0])*n.t[0]) + ((a.t[1])*n.t[1]) + ((a.t[2])*n.t[2]);
+	//printf("cull = %f\n", cross);
+	if(cross <= 0){
+		return 0;
+	}
+	return 1;
+}
+
 void drawObject(Image *im, int colour, Object *o, Matrix c)
 {
 	int i, j;
@@ -365,28 +421,29 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 	for(j=0; j<(o->polynum); j++){
 		Poly poly;
 		polyverts = &o->polys[j*4];
-		//printf("polyverts =%d\n", *(polyverts));
-		if(*polyverts == PASS){
-			poly.a.x = (transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x;
-			poly.a.y = (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y;
-			poly.b.x = (transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x;
-			poly.b.y = (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y;
-			poly.c.x = (transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x;
-			poly.c.y = (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y;
-			poly.d.x = PASS;
-			poly.d.y = PASS;
-			//printf("%d\n", c.y);
-			drawTri(im, colour, &poly);
-		}else{
-			poly.a.x = (transformed.verts[(*(polyverts)-1)*4]*SCALE)+off_x;
-			poly.a.y = (transformed.verts[((*(polyverts)-1)*4)+1]*SCALE)+off_y;
-			poly.b.x = (transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x;
-			poly.b.y = (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y;
-			poly.c.x = (transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x;
-			poly.c.y = (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y;
-			poly.d.x = (transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x;
-			poly.d.y = (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y;
-			drawQuad(im, colour, &poly);
+		//printf("%d", *(polyverts+1));
+		//printf("x = %f\n", transformed.verts[((*polyverts-1)*4)]);
+		if(*polyverts != PASS){
+			subset(poly.a, &transformed.verts[(*polyverts-1)*4], 4);
+			
+		}
+		subset(poly.b, &transformed.verts[(*(polyverts+1)-1)*4], 4);
+		subset(poly.c, &transformed.verts[(*(polyverts+2)-1)*4], 4);
+		subset(poly.d, &transformed.verts[(*(polyverts+3)-1)*4], 4);
+		if(!cull(&poly)){
+			if(*polyverts == PASS){
+				struct int2 a = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
+				struct int2 b = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
+				struct int2 c = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
+				//printf("%d\n", c.y);
+				drawTri(im, colour, a, b, c);
+			}else{
+				struct int2 a = {(transformed.verts[(*(polyverts)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts)-1)*4)+1]*SCALE)+off_y};
+				struct int2 b = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
+				struct int2 c = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
+				struct int2 d = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
+				drawQuad(im, colour, a, b, c, d);
+			}
 		}
 	}
 }

@@ -99,11 +99,11 @@ Matrix matrix_add(Matrix a, Matrix b)
 	}
     int x, y;
 	Matrix r;
-	r = new_matrix(a.rows, a.rows);
+	r = new_matrix(a.rows, a.cols);
 	
 	for (x=0; x<a.rows; x++){
 	    for (y=0; y<b.cols; y++){
-		    M(r, y, x) = M(a, y, x)+M(b, y, x);
+		    M(r, y, x) = M(a, y, x) + M(b, y, x);
 			
 		}
 	}
@@ -114,7 +114,7 @@ Matrix matrix_scalar_mult(Matrix a, double b)
 {
     int x, y;
 	Matrix r;
-	r = new_matrix(a.rows, a.rows);
+	r = new_matrix(a.rows, a.cols);
 	
 	for (x=0; x<a.rows; x++){
 	    for (y=0; y<a.cols; y++){
@@ -122,6 +122,28 @@ Matrix matrix_scalar_mult(Matrix a, double b)
 			
 		}
 	}
+	return r;
+}
+
+Matrix matrix_cross(Matrix a, Matrix b) //3D column only
+{
+	if((a.rows != 4) || (b.rows != 4)){
+		printf("%d %d\n", a.cols, b.cols);
+		printf("Matrix error, cross product only works on 3D column vectors.\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	Matrix r;
+	r = new_matrix(a.rows, a.cols);
+	
+	int i;
+	double data[4];
+	data[0] = a.t[1]*b.t[2] - a.t[2]*b.t[1];
+	data[1] = -1*(a.t[0]*b.t[2]) + (a.t[2]*b.t[0]);
+	data[2] = a.t[0]*b.t[1] - a.t[1]*b.t[0];
+	data[3] = 1;
+
+	memcpy(r.t, data, sizeof(data));
 	return r;
 }
 

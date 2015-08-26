@@ -72,7 +72,7 @@ Object new_oct()
 	Object oct;
 	objectInit(&oct, 6, 8);
 	double verts[24] = {1, 0, 0, 1, -1, 0, 0, 1, 0, 1, 0, 1, 0, -1, 0, 1, 0, 0, 1, 1, 0, 0, -1, 1};
-	int polys[32] = {PASS, 2, 3, 5, PASS, 3, 1, 6, PASS, 4, 1, 5, PASS, 1, 4, 6, PASS, 3, 2, 5, PASS, 2, 3, 6, PASS, 2, 4, 5, PASS, 4, 2, 6};
+	int polys[32] = {PASS, 1, 3, 5, PASS, 3, 1, 6, PASS, 4, 1, 5, PASS, 1, 4, 6, PASS, 3, 2, 5, PASS, 2, 3, 6, PASS, 2, 4, 5, PASS, 4, 2, 6};
 	memcpy(oct.verts, verts, sizeof(verts));
 	memcpy(oct.polys, polys, sizeof(polys));
 	return oct;

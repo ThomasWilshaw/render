@@ -12,6 +12,7 @@ void print_matrix(Matrix t);
 Matrix matrix_mult(Matrix a, Matrix b);
 Matrix matrix_add(Matrix a, Matrix b);
 Matrix matrix_scalar_mult(Matrix a, double b);
+Matrix matrix_cross(Matrix a, Matrix b);//3D column only
 Matrix tran(Matrix a, double x, double y, double z);
 Matrix scal(Matrix a, double sx, double sy, double sz);
 Matrix rot(Matrix a, double theta, int axis);
