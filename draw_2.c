@@ -41,6 +41,16 @@ typedef struct {
 	
 }Poly;
 
+typedef struct{
+	double a[3];
+	double b[3];
+} Edge;
+
+typedef struct{
+	int n;
+	Edge *edges;
+}EdgeList;
+
 void drawPoint(Image *i, int x, int y, int col);
 void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
          short BaseColor, short NumLevels, unsigned short IntensityBits);
@@ -49,13 +59,14 @@ void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c);
 void createCanvas(Image *i, FILE *f, int colour, int width, int height);
 void writeImage(FILE *f, Image *i);
 void matrixTests();
-void drawObject(Image *i, int colour, Object *o, Matrix c);
-//void objectInit(Object *o, int vertnum, int polynum);
+void addObject(EdgeList *list, int colour, Object *o, Matrix c);
 void drawFromFile(Image *i, FILE *save, FILE *f);
 int comConvert(char * com);
 int shapeConvert(char * com);
 void subset(double *dest, double *start, int size);
 void objectTests();
+void addEdge(EdgeList *list, Edge edge);
+void renderScene(EdgeList *list, Image *im);
 
 int main(int argc, char* argv[])
 {
@@ -380,7 +391,7 @@ int cull(Poly *poly)
 	return 1;
 }
 
-void drawObject(Image *im, int colour, Object *o, Matrix c)
+void addObject(EdgeList *list, int colour, Object *o, Matrix c)
 {
 	int i, j;
 	Object transformed;
@@ -411,8 +422,8 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 	}
 	
 	
-	double off_x = im->x/2;
-	double off_y = im->y/2;
+	//double off_x = im->x/2;
+	//double off_y = im->y/2;
 	
 	for(j=0; j<(o->polynum); j++){
 		int *polyverts;
@@ -432,7 +443,7 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 		}
 	
 		if(!cull(&poly)){
-			//printf("not culling\n");
+			printf("not culling\n");
 			int m;
 			int cur = -1;
 			int next = 0;
@@ -446,7 +457,17 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 					next++;
 					cur++;
 				}
-				drawWuLine(im, (poly.p[cur][1]*SCALE)+off_y, (poly.p[cur][0]*SCALE)+off_x, (poly.p[next][1]*SCALE)+off_y, (poly.p[next][0]*SCALE)+off_x, 0, 256, 8);
+				Edge edge;
+				edge.a[0] = poly.p[cur][0];
+				edge.a[1] = poly.p[cur][1];
+				edge.a[2] = poly.p[cur][2];
+				
+				edge.b[0] = poly.p[next][0];
+				edge.b[1] = poly.p[next][1];
+				edge.b[2] = poly.p[next][2];
+				
+				addEdge(list, edge);
+				//drawWuLine(im, (poly.p[cur][1]*SCALE)+off_y, (poly.p[cur][0]*SCALE)+off_x, (poly.p[next][1]*SCALE)+off_y, (poly.p[next][0]*SCALE)+off_x, 0, 256, 8);
 				m++;
 			}
 		}
@@ -470,6 +491,11 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 	
 	/*Object test*/
 	int pass;
+	
+	/*Edge list*/
+	EdgeList list;
+	list.n = 0;
+	list.edges = malloc(sizeof(Edge));
 	
 	while(fgets(buffer, bufferSize, f) != NULL){
 		//printf("%s", buffer);
@@ -544,7 +570,7 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 						break;
 				}
 				if(pass){
-					drawObject(i, 0, &o, C);
+					addObject(&list, 0, &o, C);
 					objectDeInit(&o);
 				}else{
 					printf("Unknown object %s\n", com[1]);
@@ -556,6 +582,7 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 		
 		free(com);
 	}
+	renderScene(&list, i);
 	writeImage(save, i);
 }
 
@@ -582,4 +609,24 @@ int shapeConvert(char * com)
 	if(strcmp(com, "HOUSE") == 0) return 5;
 	
 	return 0;
+}
+
+void addEdge(EdgeList *list, Edge edge)
+{
+	list->edges = realloc(list->edges, sizeof(Edge)*(list->n + 1));
+	list->edges[list->n++] = edge;
+	//(list->n)++;
+}
+
+void renderScene(EdgeList *list, Image *im)
+{
+	printf("Rendering...\n");
+	int n, i;
+	n = list->n;
+	int x, y;
+	x = (im->x)/2;
+	y = (im->y)/2;
+	for(i=0; i<n; i++){
+		drawWuLine(im, (list->edges[i].a[0]*SCALE)+y, (list->edges[i].a[1]*SCALE)+x, (list->edges[i].b[0]*SCALE)+y, (list->edges[i].b[1]*SCALE)+x, 0, 256, 8);
+	}
 }
