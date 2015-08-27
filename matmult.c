@@ -136,7 +136,6 @@ Matrix matrix_cross(Matrix a, Matrix b) //3D column only
 	Matrix r;
 	r = new_matrix(a.rows, a.cols);
 	
-	int i;
 	double data[4];
 	data[0] = a.t[1]*b.t[2] - a.t[2]*b.t[1];
 	data[1] = -1*(a.t[0]*b.t[2]) + (a.t[2]*b.t[0]);

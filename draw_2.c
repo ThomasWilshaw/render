@@ -37,6 +37,7 @@ typedef struct {
 	double b[4];
 	double c[4];
 	double d[4];
+	double **p;
 	
 }Poly;
 
@@ -49,17 +50,22 @@ void createCanvas(Image *i, FILE *f, int colour, int width, int height);
 void writeImage(FILE *f, Image *i);
 void matrixTests();
 void drawObject(Image *i, int colour, Object *o, Matrix c);
-void objectInit(Object *o, int vertnum, int polynum);
+//void objectInit(Object *o, int vertnum, int polynum);
 void drawFromFile(Image *i, FILE *save, FILE *f);
 int comConvert(char * com);
 int shapeConvert(char * com);
 void subset(double *dest, double *start, int size);
+void objectTests();
 
 int main(int argc, char* argv[])
 {
 	if(argc > 1){
 		if(strcmp(argv[1], "-t") == 0){
 			matrixTests();
+			return 1;
+		}
+		if(strcmp(argv[1], "-o") == 0){
+			objectTests();
 			return 1;
 		}
 	}
@@ -89,48 +95,33 @@ int main(int argc, char* argv[])
 		}
 	}
 	
-	Object square;
-	square = new_square();
-	Object plane;
-	plane = new_plane();
-	Object cube;
-	cube = new_cube();
-	Object oct;
-	oct = new_oct();
-	
-	Matrix C;
-	C = new_matrix(4, 4);
-	init_identity_matrix(&C);
-	C = pers(C, 15, 6.8, 25);
-	//C = ortho(C, 10);
-	C = tran(C, 0, 2, 20);
-	C = rot(C, 70, 1);
-	C = rot(C, 48, 3);
-	C = scal(C, 1, 1, -1);
-	C = scal(C, 2, 2, 2);
-	stackPush(&transformStack, C);
-	drawObject(&image, 0, &square, C);
-	C = tran(C, 2, 0, 0);
-	drawObject(&image, 0, &plane, C);
-	C = stackPop(&transformStack);
-	stackPush(&transformStack, C);
-	C = tran(C, 0, 2, 0);
-	drawObject(&image, 0, &plane, C);
-	C = stackPop(&transformStack);
-	stackPush(&transformStack, C);
-	C = rot(C, 20, 3);
-	C = tran(C, 0, 0, 1);
-	drawObject(&image, 0, &cube, C);
-	C = stackPop(&transformStack);
-	C = tran(C, 5, 0, 0);
-	C = rot(C, -15, 3);
-	drawObject(&image, 0, &oct, C);
-	
-	
-	
 	/*Close image and save*/
 	writeImage(f, &image);
 	return 1;
+}
+
+void objectTests()
+{
+	printf("Object tests:\n");
+	Object o;
+	o = new_house();
+	
+	int i, j;
+	for(i=0; i<o.polynum; i++){
+		printf("poly %d:\n", i);
+		int cur;
+		j = 0;
+		while((cur=o.polys[i][j])!=0){
+			int next;
+			if(o.polys[i][j+1] == 0){
+				next = o.polys[i][0];
+			}else{
+				next = o.polys[i][j+1];
+			}
+			printf("line between %d and %d\n", cur, next);
+			j++;
+		}
+	}
 }
 
 void matrixTests()
@@ -367,13 +358,16 @@ int cull(Poly *poly)
 	crossB = new_matrix(4, 1);
 	n = new_matrix(4, 1);
 	
-	a.t = poly->b;
-	b.t = poly->c;
-	c.t = poly->d;
+	a.t = poly->p[0];
+	b.t = poly->p[1];
+	c.t = poly->p[2];
+	//print_matrix(a);
+	//print_matrix(b);
+	//print_matrix(c);
 	a = matrix_scalar_mult(a, -1);
 	crossA = matrix_add(b, a);
 	crossB = matrix_add(c, a);
-
+	//printf("test\n");
 	n = matrix_cross(crossA, crossB);
 	
 	
@@ -390,19 +384,21 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 {
 	int i, j;
 	Object transformed;
-	objectInit(&transformed, o->vertnum, o->polynum);
+	transformed = objectInitFrom(o);
 	transformed.polys = o->polys;
 	for(i = 0; i<o->vertnum; i++){
 		Matrix vertice;
 		Matrix result;
 		vertice = new_matrix(1, 4);
 		result = new_matrix(1, 4);
-		double vertData[4];
+		double vertData[4] = {0, 0, 0, 0};
+		
 		vertData[0] =  o->verts[i*4];
 		vertData[1] =  o->verts[i*4+1];
 		vertData[2] =  o->verts[i*4+2];
 		vertData[3] =  o->verts[i*4+3];
 		vertice.t = vertData;
+		
 		
 		result = matrix_mult(vertice, c);
 		transformed.verts[i*4] = result.t[0]/result.t[3];
@@ -414,36 +410,44 @@ void drawObject(Image *im, int colour, Object *o, Matrix c)
 		//print_matrix(result);
 	}
 	
-	int *polyverts;
+	
 	double off_x = im->x/2;
 	double off_y = im->y/2;
 	
 	for(j=0; j<(o->polynum); j++){
+		int *polyverts;
+		int count = 0;
 		Poly poly;
-		polyverts = &o->polys[j*4];
-		
-		//create polygon struct
-		if(*polyverts != PASS){
-			subset(poly.a, &transformed.verts[(*polyverts-1)*4], 4);
-			
+		polyverts = &o->polys[j][0];
+		//printf("polyverts = %d\n", *polyverts);
+		while(o->polys[j][count] != 0){
+			count++;
 		}
-		subset(poly.b, &transformed.verts[(*(polyverts+1)-1)*4], 4);
-		subset(poly.c, &transformed.verts[(*(polyverts+2)-1)*4], 4);
-		subset(poly.d, &transformed.verts[(*(polyverts+3)-1)*4], 4);
-		//draw the poly
+		//printf("count: %d\n", count);
+		poly.p = (double **)malloc(sizeof(double) * count);
+		int k;
+		for(k=0; k<count; k++){
+			poly.p[k] = (double *)malloc(sizeof(double) * 4);
+			subset(poly.p[k], &transformed.verts[(*(polyverts+k)-1)*4], 4);
+		}
+	
 		if(!cull(&poly)){
-			if(*polyverts == PASS){
-				struct int2 a = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
-				struct int2 b = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
-				struct int2 c = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
-				//printf("%d\n", c.y);
-				drawTri(im, colour, a, b, c);
-			}else{
-				struct int2 a = {(transformed.verts[(*(polyverts)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts)-1)*4)+1]*SCALE)+off_y};
-				struct int2 b = {(transformed.verts[(*(polyverts+1)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+1)-1)*4)+1]*SCALE)+off_y};
-				struct int2 c = {(transformed.verts[(*(polyverts+2)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+2)-1)*4)+1]*SCALE)+off_y};
-				struct int2 d = {(transformed.verts[(*(polyverts+3)-1)*4]*SCALE)+off_x, (transformed.verts[((*(polyverts+3)-1)*4)+1]*SCALE)+off_y};
-				drawQuad(im, colour, a, b, c, d);
+			//printf("not culling\n");
+			int m;
+			int cur = -1;
+			int next = 0;
+			m = 0;
+			//
+			while(o->polys[j][m]!=0){
+				if(o->polys[j][m+1] == 0){
+					next = 0;
+					cur++;
+				}else{
+					next++;
+					cur++;
+				}
+				drawWuLine(im, (poly.p[cur][1]*SCALE)+off_y, (poly.p[cur][0]*SCALE)+off_x, (poly.p[next][1]*SCALE)+off_y, (poly.p[next][0]*SCALE)+off_x, 0, 256, 8);
+				m++;
 			}
 		}
 	}
@@ -513,6 +517,7 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 				break;
 			case 8: ;
 				Object o;
+				//objectInit(&o);
 				pass = 0;
 				switch(shapeConvert(com[1])){
 					case 1:
@@ -529,6 +534,10 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 						break;
 					case 4:
 						o = new_square();
+						pass = 1;
+						break;
+					case 5:
+						o = new_house();
 						pass = 1;
 						break;
 					default:
@@ -570,6 +579,7 @@ int shapeConvert(char * com)
 	if(strcmp(com, "PLANE") == 0) return 2;
 	if(strcmp(com, "OCT") == 0) return 3;
 	if(strcmp(com, "SQUARE") == 0) return 4;
+	if(strcmp(com, "HOUSE") == 0) return 5;
 	
 	return 0;
 }
