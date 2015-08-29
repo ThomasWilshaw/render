@@ -33,23 +33,25 @@ typedef struct {
 }Image;
 
 typedef struct {
-	double a[4];
-	double b[4];
-	double c[4];
-	double d[4];
 	double **p;
-	
+	int n;
 }Poly;
 
 typedef struct{
 	double a[3];
 	double b[3];
+	int boundry;
 } Edge;
 
 typedef struct{
 	int n;
 	Edge *edges;
 }EdgeList;
+
+typedef struct{
+	int n;
+	Poly *polys;
+}PolyList;
 
 void drawPoint(Image *i, int x, int y, int col);
 void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
@@ -59,14 +61,16 @@ void drawTri(Image *i, int colour, struct int2 a, struct int2 b, struct int2 c);
 void createCanvas(Image *i, FILE *f, int colour, int width, int height);
 void writeImage(FILE *f, Image *i);
 void matrixTests();
-void addObject(EdgeList *list, int colour, Object *o, Matrix c);
+void addObject(EdgeList *eList, PolyList *pList, int colour, Object *o, Matrix c);
 void drawFromFile(Image *i, FILE *save, FILE *f);
 int comConvert(char * com);
 int shapeConvert(char * com);
 void subset(double *dest, double *start, int size);
 void objectTests();
 void addEdge(EdgeList *list, Edge edge);
-void renderScene(EdgeList *list, Image *im);
+void addPoly(PolyList *list, Poly poly);
+void renderScene(EdgeList *list, PolyList *pList, Image *im);
+Matrix findNormal(Poly *poly);
 
 int main(int argc, char* argv[])
 {
@@ -355,6 +359,31 @@ void subset(double *dest, double *start, int size)
 	}
 }
 
+Matrix findNormal(Poly *poly)
+{
+	Matrix a;
+	Matrix b;
+	Matrix c;
+	Matrix crossA, crossB;
+	Matrix n;
+	a = new_matrix(4, 1);
+	b = new_matrix(4, 1);
+	c = new_matrix(4, 1);
+	crossA = new_matrix(4, 1);
+	crossB = new_matrix(4, 1);
+	n = new_matrix(4, 1);
+	
+	a.t = poly->p[0];
+	b.t = poly->p[1];
+	c.t = poly->p[2];
+	a = matrix_scalar_mult(a, -1);
+	crossA = matrix_add(b, a);
+	crossB = matrix_add(c, a);
+	n = matrix_cross(crossA, crossB);
+	
+	return n;
+}
+
 int cull(Poly *poly)
 {
 	Matrix a;
@@ -391,7 +420,7 @@ int cull(Poly *poly)
 	return 1;
 }
 
-void addObject(EdgeList *list, int colour, Object *o, Matrix c)
+void addObject(EdgeList *eList, PolyList *pList, int colour, Object *o, Matrix c)
 {
 	int i, j;
 	Object transformed;
@@ -436,6 +465,7 @@ void addObject(EdgeList *list, int colour, Object *o, Matrix c)
 		}
 		//printf("count: %d\n", count);
 		poly.p = (double **)malloc(sizeof(double) * count);
+		poly.n = count;
 		int k;
 		for(k=0; k<count; k++){
 			poly.p[k] = (double *)malloc(sizeof(double) * 4);
@@ -444,6 +474,7 @@ void addObject(EdgeList *list, int colour, Object *o, Matrix c)
 	
 		if(!cull(&poly)){
 			printf("not culling\n");
+			addPoly(pList, poly);
 			int m;
 			int cur = -1;
 			int next = 0;
@@ -458,6 +489,7 @@ void addObject(EdgeList *list, int colour, Object *o, Matrix c)
 					cur++;
 				}
 				Edge edge;
+				edge.boundry = 0;
 				edge.a[0] = poly.p[cur][0];
 				edge.a[1] = poly.p[cur][1];
 				edge.a[2] = poly.p[cur][2];
@@ -466,7 +498,7 @@ void addObject(EdgeList *list, int colour, Object *o, Matrix c)
 				edge.b[1] = poly.p[next][1];
 				edge.b[2] = poly.p[next][2];
 				
-				addEdge(list, edge);
+				addEdge(eList, edge);
 				//drawWuLine(im, (poly.p[cur][1]*SCALE)+off_y, (poly.p[cur][0]*SCALE)+off_x, (poly.p[next][1]*SCALE)+off_y, (poly.p[next][0]*SCALE)+off_x, 0, 256, 8);
 				m++;
 			}
@@ -493,9 +525,14 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 	int pass;
 	
 	/*Edge list*/
-	EdgeList list;
-	list.n = 0;
-	list.edges = malloc(sizeof(Edge));
+	EdgeList eList;
+	eList.n = 0;
+	eList.edges = malloc(sizeof(Edge));
+	
+	/*Poly list*/
+	PolyList pList;
+	pList.n = 0;
+	pList.polys = malloc(sizeof(Poly));
 	
 	while(fgets(buffer, bufferSize, f) != NULL){
 		//printf("%s", buffer);
@@ -570,7 +607,7 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 						break;
 				}
 				if(pass){
-					addObject(&list, 0, &o, C);
+					addObject(&eList, &pList, 0, &o, C);
 					objectDeInit(&o);
 				}else{
 					printf("Unknown object %s\n", com[1]);
@@ -582,7 +619,7 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 		
 		free(com);
 	}
-	renderScene(&list, i);
+	renderScene(&eList, &pList, i);
 	writeImage(save, i);
 }
 
@@ -613,20 +650,128 @@ int shapeConvert(char * com)
 
 void addEdge(EdgeList *list, Edge edge)
 {
+	int n = list->n;
+	int i;
+	for(i=0; i<n; i++){
+		if(memcmp(list->edges[i].a, edge.a, sizeof(edge.a))==0){
+			if(memcmp(list->edges[i].b, edge.a, sizeof(edge.b))==0){
+				return;
+			}
+		}
+	}
+	edge.boundry = 1;
 	list->edges = realloc(list->edges, sizeof(Edge)*(list->n + 1));
 	list->edges[list->n++] = edge;
-	//(list->n)++;
 }
 
-void renderScene(EdgeList *list, Image *im)
+void addPoly(PolyList *list, Poly poly)
+{
+	list->polys = realloc(list->polys, sizeof(Poly)*(list->n + 1));
+	list->polys[list->n++] = poly;
+}
+
+void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 {
 	printf("Rendering...\n");
-	int n, i;
-	n = list->n;
+	int lineTotal, i, j;
+	lineTotal = eList->n;
 	int x, y;
 	x = (im->x)/2;
 	y = (im->y)/2;
-	for(i=0; i<n; i++){
-		drawWuLine(im, (list->edges[i].a[0]*SCALE)+y, (list->edges[i].a[1]*SCALE)+x, (list->edges[i].b[0]*SCALE)+y, (list->edges[i].b[1]*SCALE)+x, 0, 256, 8);
+	double xEnd, yEnd, zEnd;
+	printf("%d\n", lineTotal);
+	int polyCur = 0;
+	int lineNumber = 0;
+	for(i=0; i<lineTotal; i++){
+		//drawWuLine(im, (eList->edges[i].a[0]*SCALE)+y, (eList->edges[i].a[1]*SCALE)+x, (eList->edges[i].b[0]*SCALE)+y, (eList->edges[i].b[1]*SCALE)+x, 0, 256, 8);
+		//printf("line: %d\n", i);
+		//printf("PolyNUmber: %d, lineNumber: %d\n", polyCur, lineNumber);
+		if(lineNumber < pList->polys[polyCur].n){
+			lineNumber++;
+		}else{
+			polyCur++;
+			lineNumber = 0;
+		}
+		int flag = 0;
+		/*Face-vertex*/
+		double inf[3] = {-1, 0, 0}; 																			//x at minus infinity
+		double testP[3] = {eList->edges[i].a[0], eList->edges[i].a[1], 1}; 										//test point, start of line
+		int polyN = pList->n; 																					//total number of polys
+		for(j=0; j<polyN; j++){
+			if(polyCur == j){
+				continue;
+			}
+			
+			int vertexNumber;
+			for(vertexNumber=pList->polys[j].n-1; vertexNumber>=0; vertexNumber--){
+				
+				//define points
+				double curP[3] = {pList->polys[j].p[vertexNumber][0], pList->polys[j].p[vertexNumber][1], 1}; 	//ith polygon
+				double nextP[3];																				//ith+1 polygon
+				if(vertexNumber != 0){
+					nextP[0] = pList->polys[j].p[vertexNumber-1][0]; 
+					nextP[1] = pList->polys[j].p[vertexNumber-1][1];
+					nextP[2] = 1;
+				}else{
+					nextP[0] = pList->polys[j].p[pList->polys[j].n-1][0]; 
+					nextP[1] = pList->polys[j].p[pList->polys[j].n-1][1];
+					nextP[2] = 1;
+				}
+				
+				//calculate the D's
+				double Di = curP[1] - testP[1];
+				double DiPlusOne = nextP[1] - testP[1];
+				if(signbit(Di*DiPlusOne)==0){ //positive if same sign so skip this vertex
+					continue;
+				}
+				//different sign
+				double DInfinity = nextP[1] - curP[1];
+				double D = (nextP[1] - testP[1]) * (curP[0] - testP[0]) - (nextP[0] - testP[0])*(curP[1] - testP[1]);
+				if(signbit(D * DInfinity)==0){ //positive if same sign so skip this vertex
+					continue;
+				}else{
+					flag = (flag + 1)%2;
+				}
+			}
+			if(flag){
+				//test z depth
+				Matrix n;
+				n = new_matrix(4, 1);
+				n = findNormal(&(pList->polys[j]));
+				//normal
+				double a = n.t[0];
+				double b = n.t[1];
+				double c = n.t[2];
+				//point on plane;
+				double x0 = pList->polys[j].p[0][0];
+				double y0 = pList->polys[j].p[0][1];
+				double z0 = pList->polys[j].p[0][2];
+				//test point
+				double x = testP[0];
+				double y = testP[1];
+				double z = ((-a*(x-x0) - b*(y-y0))/c) + z0;
+				if(z < eList->edges[i].a[2]){
+					printf("totally hidden\n");
+				}else{
+				flag = 0;
+				}
+				break;
+			}else{
+				//printf("Not hidden.\n");
+				continue;
+			}
+		}
+		
+		int QI;	//Quantitative invisibility 
+		if(flag){
+			printf("Doing edge compare...\n");
+			QI = 1;
+			//drawWuLine(im, (eList->edges[i].a[0]*SCALE)+y, (eList->edges[i].a[1]*SCALE)+x, (eList->edges[i].b[0]*SCALE)+y, (eList->edges[i].b[1]*SCALE)+x, 0, 256, 8);
+		}else{
+			printf("Not hidden.\n");
+			QI = 0;
+			drawWuLine(im, (eList->edges[i].a[0]*SCALE)+y, (eList->edges[i].a[1]*SCALE)+x, (eList->edges[i].b[0]*SCALE)+y, (eList->edges[i].b[1]*SCALE)+x, 0, 256, 8);
+		}
+		
 	}
 }
