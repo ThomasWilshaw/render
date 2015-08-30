@@ -14,6 +14,9 @@
 #define PASS 999999
 #define SCALE 100
 
+double currentX = 0;
+double currentY = 0;
+
 typedef struct int2 {
     int x;
 	int y;
@@ -53,6 +56,16 @@ typedef struct{
 	Poly *polys;
 }PolyList;
 
+typedef struct{
+	double alpha;
+	int deltaQI;
+}Intersection;
+
+typedef struct{
+	int n;
+	Intersection *inters;
+}IntersList;
+
 void drawPoint(Image *i, int x, int y, int col);
 void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
          short BaseColor, short NumLevels, unsigned short IntensityBits);
@@ -71,6 +84,9 @@ void addEdge(EdgeList *list, Edge edge);
 void addPoly(PolyList *list, Poly poly);
 void renderScene(EdgeList *list, PolyList *pList, Image *im);
 Matrix findNormal(Poly *poly);
+void moveTo(Image *im, double x, double y);
+void drawTo(Image *im, double x, double y);
+void sortIntersections(IntersList *list);
 
 int main(int argc, char* argv[])
 {
@@ -177,6 +193,21 @@ void matrixTests()
 	a = matrix_scalar_mult(a, -1);
 	s = matrix_add(a, b);
 	print_matrix(s);
+}
+
+void moveTo(Image *im, double x, double y)
+{
+	double x_offset = (im->x)/2;
+	double y_offset = (im->y)/2;
+	currentX = x*SCALE + x_offset;
+	currentY = y*SCALE + y_offset;
+}
+
+void drawTo(Image *im, double x, double y){
+	double x_offset = (im->x)/2;
+	double y_offset = (im->y)/2;
+	drawWuLine(im, currentX, currentY, x*SCALE+x_offset, y*SCALE+y_offset, 0, 256, 8);
+	moveTo(im, x, y);
 }
 
 void createCanvas(Image *i, FILE *f, int colour, int width, int height)
@@ -473,7 +504,7 @@ void addObject(EdgeList *eList, PolyList *pList, int colour, Object *o, Matrix c
 		}
 	
 		if(!cull(&poly)){
-			printf("not culling\n");
+			//printf("not culling\n");
 			addPoly(pList, poly);
 			int m;
 			int cur = -1;
@@ -653,8 +684,12 @@ void addEdge(EdgeList *list, Edge edge)
 	int n = list->n;
 	int i;
 	for(i=0; i<n; i++){
-		if(memcmp(list->edges[i].a, edge.a, sizeof(edge.a))==0){
-			if(memcmp(list->edges[i].b, edge.a, sizeof(edge.b))==0){
+		if((list->edges[i].a[0]==edge.b[0]) && (list->edges[i].a[1]==edge.b[1])){
+			printf("POSSIBLE\n");
+			printf("%f, %f\n", list->edges[i].b[0], edge.b[0]);
+			if((list->edges[i].b[0]==edge.a[0]) && (list->edges[i].b[1]==edge.a[1])){
+				list->edges[i].boundry = 0;
+				printf("NOT BOUNDRY!!\n");
 				return;
 			}
 		}
@@ -670,15 +705,48 @@ void addPoly(PolyList *list, Poly poly)
 	list->polys[list->n++] = poly;
 }
 
+void addInter(IntersList *list, Intersection i){
+	list->inters = realloc(list->inters, sizeof(Intersection)*(list->n + 1));
+	list->inters[list->n++] = i;
+}
+
+void removeInter(IntersList *list, int n){
+	free(&(list->inters[n]));
+	list->n--;
+}
+
+void sortIntersections(IntersList *list)
+{
+	int n = list->n;
+	//printf("n:%d\n", n);
+	int i, j;
+	Intersection temp;
+	double smallest = 2;
+	int pos;
+	for(i=0; i<n; i++){
+		for(j=(i+1); j<n; j++){
+			if(list->inters[j].alpha < smallest){
+				smallest = list->inters[j].alpha;
+				pos = j;
+			}
+		}
+		if(smallest < list->inters[i].alpha){
+			temp = list->inters[i];
+			list->inters[i] = list->inters[pos];
+			list->inters[pos] = temp;
+		}
+	}
+	//for(i=0; i<n; i++){
+		//printf("alpha: %f\n", list->inters[i].alpha);
+	//}
+}
+
 void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 {
 	printf("Rendering...\n");
 	int lineTotal, i, j;
 	lineTotal = eList->n;
-	int x, y;
-	x = (im->x)/2;
-	y = (im->y)/2;
-	double xEnd, yEnd, zEnd;
+
 	printf("%d\n", lineTotal);
 	int polyCur = 0;
 	int lineNumber = 0;
@@ -694,7 +762,7 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 		}
 		int flag = 0;
 		/*Face-vertex*/
-		double inf[3] = {-1, 0, 0}; 																			//x at minus infinity
+		/*************/
 		double testP[3] = {eList->edges[i].a[0], eList->edges[i].a[1], 1}; 										//test point, start of line
 		int polyN = pList->n; 																					//total number of polys
 		for(j=0; j<polyN; j++){
@@ -753,7 +821,7 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 				if(z < eList->edges[i].a[2]){
 					printf("totally hidden\n");
 				}else{
-				flag = 0;
+					flag = 0;
 				}
 				break;
 			}else{
@@ -764,14 +832,114 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 		
 		int QI;	//Quantitative invisibility 
 		if(flag){
-			printf("Doing edge compare...\n");
+			//printf("Doing edge compare...\n");
 			QI = 1;
-			//drawWuLine(im, (eList->edges[i].a[0]*SCALE)+y, (eList->edges[i].a[1]*SCALE)+x, (eList->edges[i].b[0]*SCALE)+y, (eList->edges[i].b[1]*SCALE)+x, 0, 256, 8);
 		}else{
-			printf("Not hidden.\n");
+			//printf("Not hidden.\n");
 			QI = 0;
-			drawWuLine(im, (eList->edges[i].a[0]*SCALE)+y, (eList->edges[i].a[1]*SCALE)+x, (eList->edges[i].b[0]*SCALE)+y, (eList->edges[i].b[1]*SCALE)+x, 0, 256, 8);
+		}
+		printf("initial QI=%d\n", QI);
+		/*Find Intersections*/
+		/********************/
+		IntersList list;
+		list.n = 0;
+		list.inters = malloc(sizeof(Intersection));
+		int n;
+		for(n=0; n<lineTotal; n++){
+			if(n == i){	//don't compare to self
+				continue;
+			}
+			if(eList->edges[n].boundry == 0){	//only compare to boundary edges	
+				continue;
+			}
+			double x1 = eList->edges[i].a[0];
+			double y1 = eList->edges[i].a[1];
+			double x2 = eList->edges[i].b[0];
+			double y2 = eList->edges[i].b[1];
+			double x3 = eList->edges[n].a[0];
+			double y3 = eList->edges[n].a[1];
+			double x4 = eList->edges[n].b[0];
+			double y4 = eList->edges[n].b[1];
+			
+			double D1 = (x4-x3)*(y1-y3) - (x1-x3)*(y4-y3);
+			double D2 = (x4-x3)*(y2-y3) - (x2-x3)*(y4-y3);
+			if(signbit(D1*D2)==0){
+				continue;
+			}
+			double D3 = (x1-x3)*(y2-y3) - (x2-x3)*(y1-y3);
+			double D4 = D1 - D2 + D3;
+			if(signbit(D3*D4)==0){
+				continue;
+			}
+			if (signbit(D3) && D3==0) D3 *= -1;
+			if (signbit(D4) && D4==0) D4 *= -1;
+			//printf("D3: %f, D4: %f\n", D3, D4);
+			if(D1 == 0){
+				continue;
+			}
+			double alpha = D1 / (D1 - D2);
+			double beta = D3 / (D3 - D4);
+			
+			double z1 = eList->edges[i].a[2];
+			double z2 = eList->edges[i].b[2];
+			double z3 = eList->edges[n].a[2];
+			double z4 = eList->edges[n].b[2];
+			
+			double Zi = z1 + alpha*(z2-z1);
+			double Zj = z3 + beta*(z4-z3);
+			
+			if(Zi < Zj){
+				continue;
+			}
+			Intersection intersection;
+			intersection.deltaQI = D1 < 0 ? 1:-1;
+			intersection.alpha = alpha;
+			
+			addInter(&list, intersection);
 		}
 		
+		/*Draw edge in bits*/
+		/*******************/
+		if(QI == 0){
+			moveTo(im, eList->edges[i].a[0], eList->edges[i].a[1]);
+		}
+		int a;
+		int deltaQI;
+		double alpha;
+		sortIntersections(&list);
+		for(a=0; a<list.n; a++){
+			deltaQI = list.inters[a].deltaQI;
+			
+			QI = QI + deltaQI;
+			printf("QI: %d, deltaQI: %d\n", QI, deltaQI);
+			alpha = list.inters[a].alpha;
+			printf("alpha: %f\n", alpha);
+			double newX = eList->edges[i].a[0] + alpha*(eList->edges[i].b[0] - eList->edges[i].a[0]);
+			double newY = eList->edges[i].a[1] + alpha*(eList->edges[i].b[1] - eList->edges[i].a[1]);
+			
+			if(QI<0){
+				printf("x:%f, y:%f", eList->edges[i].a[0]*SCALE+(im->x/2), eList->edges[i].a[1]*SCALE+(im->y/2));
+			}
+			if(alpha==1){ /*HACK!!! WTF is going on?*/
+				QI = 0;
+				break;
+			}
+			
+			if(QI==0 && deltaQI==-1){
+				moveTo(im, newX, newY);
+				continue;
+			}
+			if(QI==1 && deltaQI==1){
+				drawTo(im, newX, newY);
+				continue;
+			}
+		}
+		if(QI==0){
+			drawTo(im, eList->edges[i].b[0], eList->edges[i].b[1]);
+		}
 	}
+	//int ii;
+	//for(ii=0; ii<eList->n; ii++){
+		//printf("%f, %f, %f, %f\n", eList->edges[ii].a[0], eList->edges[ii].a[1], eList->edges[ii].b[0], eList->edges[ii].b[1]);
+	//}
 }
