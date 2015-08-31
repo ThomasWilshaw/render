@@ -1,7 +1,3 @@
-/*
-*work out draw structure
-*Add test to draw to see if pixel is inside the image
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -908,7 +904,7 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 			//if(QI<0){
 				//printf("x:%f, y:%f\n\n\n", eList->edges[i].a[0]*SCALE+(im->x/2), eList->edges[i].a[1]*SCALE+(im->y/2));
 				//printf("QI: %d, deltaQI: %d\n", QI, deltaQI);
-				printf("Error, negative QI!\n");
+				//printf("Error, negative QI!\n");
 			//}
 			if(QI==0 && deltaQI==-1){
 				moveTo(im, newX, newY);
