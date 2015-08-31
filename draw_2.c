@@ -685,11 +685,10 @@ void addEdge(EdgeList *list, Edge edge)
 	int i;
 	for(i=0; i<n; i++){
 		if((list->edges[i].a[0]==edge.b[0]) && (list->edges[i].a[1]==edge.b[1])){
-			printf("POSSIBLE\n");
-			printf("%f, %f\n", list->edges[i].b[0], edge.b[0]);
 			if((list->edges[i].b[0]==edge.a[0]) && (list->edges[i].b[1]==edge.a[1])){
 				list->edges[i].boundry = 0;
-				printf("NOT BOUNDRY!!\n");
+				//printf("NOT BOUNDRY!!\n");
+				//printf("%f, %f\n", edge.a[0]*SCALE+512, edge.a[1]*SCALE+512);
 				return;
 			}
 		}
@@ -746,14 +745,10 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 	printf("Rendering...\n");
 	int lineTotal, i, j;
 	lineTotal = eList->n;
-
-	printf("%d\n", lineTotal);
+	//printf("%d\n", lineTotal);
 	int polyCur = 0;
 	int lineNumber = 0;
 	for(i=0; i<lineTotal; i++){
-		//drawWuLine(im, (eList->edges[i].a[0]*SCALE)+y, (eList->edges[i].a[1]*SCALE)+x, (eList->edges[i].b[0]*SCALE)+y, (eList->edges[i].b[1]*SCALE)+x, 0, 256, 8);
-		//printf("line: %d\n", i);
-		//printf("PolyNUmber: %d, lineNumber: %d\n", polyCur, lineNumber);
 		if(lineNumber < pList->polys[polyCur].n){
 			lineNumber++;
 		}else{
@@ -765,9 +760,13 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 		/*************/
 		double testP[3] = {eList->edges[i].a[0], eList->edges[i].a[1], 1}; 										//test point, start of line
 		int polyN = pList->n; 																					//total number of polys
+		
+		int QI = 0;	//Quantitative invisibility 
+		
 		for(j=0; j<polyN; j++){
+			flag = 0;
 			if(polyCur == j){
-				continue;
+				//continue;
 			}
 			
 			int vertexNumber;
@@ -801,6 +800,7 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 					flag = (flag + 1)%2;
 				}
 			}
+
 			if(flag){
 				//test z depth
 				Matrix n;
@@ -818,27 +818,18 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 				double x = testP[0];
 				double y = testP[1];
 				double z = ((-a*(x-x0) - b*(y-y0))/c) + z0;
+
 				if(z < eList->edges[i].a[2]){
-					printf("totally hidden\n");
+					QI++;
 				}else{
 					flag = 0;
 				}
-				break;
 			}else{
-				//printf("Not hidden.\n");
 				continue;
 			}
 		}
 		
-		int QI;	//Quantitative invisibility 
-		if(flag){
-			//printf("Doing edge compare...\n");
-			QI = 1;
-		}else{
-			//printf("Not hidden.\n");
-			QI = 0;
-		}
-		printf("initial QI=%d\n", QI);
+		//printf("initial QI=%d\n", QI);
 		/*Find Intersections*/
 		/********************/
 		IntersList list;
@@ -873,7 +864,6 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 			}
 			if (signbit(D3) && D3==0) D3 *= -1;
 			if (signbit(D4) && D4==0) D4 *= -1;
-			//printf("D3: %f, D4: %f\n", D3, D4);
 			if(D1 == 0){
 				continue;
 			}
@@ -888,7 +878,7 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 			double Zi = z1 + alpha*(z2-z1);
 			double Zj = z3 + beta*(z4-z3);
 			
-			if(Zi < Zj){
+			if(Zi <= Zj){
 				continue;
 			}
 			Intersection intersection;
@@ -911,20 +901,15 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 			deltaQI = list.inters[a].deltaQI;
 			
 			QI = QI + deltaQI;
-			printf("QI: %d, deltaQI: %d\n", QI, deltaQI);
 			alpha = list.inters[a].alpha;
-			printf("alpha: %f\n", alpha);
 			double newX = eList->edges[i].a[0] + alpha*(eList->edges[i].b[0] - eList->edges[i].a[0]);
 			double newY = eList->edges[i].a[1] + alpha*(eList->edges[i].b[1] - eList->edges[i].a[1]);
 			
-			if(QI<0){
-				printf("x:%f, y:%f", eList->edges[i].a[0]*SCALE+(im->x/2), eList->edges[i].a[1]*SCALE+(im->y/2));
-			}
-			if(alpha==1){ /*HACK!!! WTF is going on?*/
-				QI = 0;
-				break;
-			}
-			
+			//if(QI<0){
+				//printf("x:%f, y:%f\n\n\n", eList->edges[i].a[0]*SCALE+(im->x/2), eList->edges[i].a[1]*SCALE+(im->y/2));
+				//printf("QI: %d, deltaQI: %d\n", QI, deltaQI);
+				printf("Error, negative QI!\n");
+			//}
 			if(QI==0 && deltaQI==-1){
 				moveTo(im, newX, newY);
 				continue;
@@ -938,8 +923,4 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 			drawTo(im, eList->edges[i].b[0], eList->edges[i].b[1]);
 		}
 	}
-	//int ii;
-	//for(ii=0; ii<eList->n; ii++){
-		//printf("%f, %f, %f, %f\n", eList->edges[ii].a[0], eList->edges[ii].a[1], eList->edges[ii].b[0], eList->edges[ii].b[1]);
-	//}
 }
