@@ -41,6 +41,7 @@ typedef struct{
 	double a[3];
 	double b[3];
 	int boundry;
+	int colour;
 } Edge;
 
 typedef struct{
@@ -535,6 +536,8 @@ void addObject(EdgeList *eList, PolyList *pList, int colour, Object *o, Matrix c
 				edge.b[1] = poly.p[next][1];
 				edge.b[2] = poly.p[next][2];
 				
+				edge.colour = colourAdd;
+				
 				addEdge(eList, edge);
 				//drawWuLine(im, (poly.p[cur][1]*SCALE)+off_y, (poly.p[cur][0]*SCALE)+off_x, (poly.p[next][1]*SCALE)+off_y, (poly.p[next][0]*SCALE)+off_x, 0, 256, 8);
 				m++;
@@ -907,6 +910,7 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 		if(QI == 0){
 			moveTo(im, eList->edges[i].a[0], eList->edges[i].a[1]);
 		}
+		colourAdd = eList->edges[i].colour;
 		int a;
 		int deltaQI;
 		double alpha;
@@ -936,5 +940,6 @@ void renderScene(EdgeList *eList, PolyList *pList, Image *im)
 		if(QI==0){
 			drawTo(im, eList->edges[i].b[0], eList->edges[i].b[1]);
 		}
+		colourAdd = 0;
 	}
 }
