@@ -57,10 +57,14 @@ void objectInit(Object *o)
 void objectDeInit(Object *o)
 {
 	//free(o->verts);
+	
 	int i;
+	printf("polynum = %d\n", o->polynum);
 	for(i=0; i<o->polynum; i++){
 		free(o->polys[i]);
+		printf("%d\n", i);
 	}
+	
 	free(o->polys);
 	o->vertnum = 0;
 	o->polynum = 0;
@@ -73,7 +77,7 @@ Object new_house()
 	o.polynum = 2;
 	double verts[20] = {0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0.5, 2, 0, 1};
 	o.polys = (int **)malloc(sizeof(int) * o.polynum);
-	o.polys[0] =(int *)malloc(sizeof(int) * 5);//{1, 2, 3, 4};
+	o.polys[0] =(int *)malloc(sizeof(int) * 5);
 	o.polys[1] = (int *)malloc(sizeof(int) * 4);
 	o.verts = malloc(sizeof(double)*20);
 	int poly1[5] = {1, 2, 3, 4, 0};
@@ -209,6 +213,70 @@ Object new_oct()
 	memcpy(oct.polys[6], poly7, sizeof(poly7));
 	memcpy(oct.polys[7], poly8, sizeof(poly8));
 	return oct;
+}
+
+Object new_icosahedron()
+{
+	Object ico;
+	ico.vertnum = 12;
+	ico.polynum = 20;
+	double phi = 1.1618034;
+	double verts[48] = {phi, 1, 0, 1, -phi, 1, 0, 1, phi, -1, 0, 1, -phi, -1, 0, 1, 1, 0, phi, 1, 1, 0, -phi, 1, -1, 0, phi, 1, -1, 0, -phi, 1, 0, phi, 1, 1, 0, -phi, 1, 1, 0, phi, -1, 1, 0, -phi, -1, 1};
+	
+	ico.polys = (int **)malloc(sizeof(int) * ico.polynum);
+	int i;
+	for(i=0; i<ico.polynum; i++){
+		ico.polys[i] = (int *)malloc(sizeof(int) * 4);
+		if(ico.polys[i] == NULL){
+			printf("HELP, %d\n", i);
+		}
+	}
+	
+	int poly1[4] = {1, 9, 5, 0};
+	int poly2[4] = {1, 6, 11, 0};
+	int poly3[4] = {3, 4, 10, 0};
+	int poly4[4] = {3, 12, 6, 0};
+	int poly5[4] = {2, 7, 9, 0};
+	int poly6[4] = {2, 11, 8, 0};
+	int poly7[4] = {4, 10, 7, 0};
+	int poly8[4] = {4, 8, 12, 0};
+	int poly9[4] = {1, 11, 9, 0};
+	int poly10[4] = {2, 9, 11, 0};
+	int poly11[4] = {3, 10, 12, 0};
+	int poly12[4] = {4, 12, 10, 0};
+	int poly13[4] = {5, 3, 1, 0};
+	int poly14[4] = {6, 1, 3, 0};
+	int poly15[4] = {7, 2, 4, 0};
+	int poly16[4] = {8, 4, 2, 0};
+	int poly17[4] = {9, 7, 5, 0};
+	int poly18[4] = {10, 5, 7, 0};
+	int poly19[4] = {11, 6, 8, 0};
+	int poly20[4] = {12, 8, 6, 0};
+	
+	ico.verts = malloc(sizeof(double) * 48);
+	memcpy(ico.verts, verts, sizeof(verts));
+	
+	memcpy(ico.polys[0], &poly1, sizeof(poly1));
+	memcpy(ico.polys[1], &poly2, sizeof(poly2));
+	memcpy(ico.polys[2], &poly3, sizeof(poly3));
+	memcpy(ico.polys[3], &poly4, sizeof(poly4));
+	memcpy(ico.polys[4], &poly5, sizeof(poly5));
+	memcpy(ico.polys[5], &poly6, sizeof(poly6));
+	memcpy(ico.polys[6], &poly7, sizeof(poly7));
+	memcpy(ico.polys[7], &poly8, sizeof(poly8));
+	memcpy(ico.polys[8], &poly9, sizeof(poly9));
+	memcpy(ico.polys[9], &poly10, sizeof(poly10));
+	memcpy(ico.polys[10], &poly11, sizeof(poly11));
+	memcpy(ico.polys[11], &poly12, sizeof(poly12));
+	memcpy(ico.polys[12], &poly13, sizeof(poly13));
+	memcpy(ico.polys[13], &poly14, sizeof(poly14));
+	memcpy(ico.polys[14], &poly15, sizeof(poly15));
+	memcpy(ico.polys[15], &poly16, sizeof(poly16));
+	memcpy(ico.polys[16], &poly17, sizeof(poly17));
+	memcpy(ico.polys[17], &poly18, sizeof(poly18));
+	memcpy(ico.polys[18], &poly19, sizeof(poly19));
+	memcpy(ico.polys[19], &poly20, sizeof(poly20));
+	return ico;
 }
 
 #endif

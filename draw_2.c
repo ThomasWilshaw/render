@@ -12,6 +12,7 @@
 
 double currentX = 0;
 double currentY = 0;
+int colourAdd = 0;
 
 typedef struct int2 {
     int x;
@@ -370,9 +371,18 @@ void drawWuLine (Image *i, short X0, short Y0, short X1, short Y1,
 
 void drawPoint(Image *i, int x, int y, int col) 
 {
+	int colour;
+	if(col<0){
+		colour = 0;
+	}
+	colour = col+colourAdd;
+	if(colour>255){
+		colour = 255;
+	}
+	
     if ((unsigned)(x) <= (i->x)-1){
 	    if ((unsigned)(y) <= (i->y)-1){
-		    i->image[x][y] = col;
+		    i->image[x][y] = colour;
 		}
 	}
 	/*image[x][y] = col; */
@@ -579,9 +589,6 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 		}
 		com = realloc(com, sizeof(char*) * (spaces+1));
 		com[spaces] = 0;
-		//for(i=0; i<spaces+1; i++){
-			//printf("%s\n", com[i]);
-		//}
 		
 		switch(comConvert(com[0])){
 			case 1://tran
@@ -630,15 +637,24 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 						o = new_house();
 						pass = 1;
 						break;
+					case 6:
+						o = new_icosahedron();
+						pass = 1;
+						break;
 					default:
 						break;
 				}
 				if(pass){
 					addObject(&eList, &pList, 0, &o, C);
+					printf("Added object %s\n", com[1]);
 					objectDeInit(&o);
+					
 				}else{
 					printf("Unknown object %s\n", com[1]);
 				}
+				break;
+			case 9:
+				colourAdd = (int) atof(com[1]);
 				break;
 			default:
 				break;
@@ -659,6 +675,7 @@ int comConvert(char *com){
 	if(strcmp(com, "PUSH") == 0) return 6;
 	if(strcmp(com, "ORTH") == 0) return 7;
 	if(strcmp(com, "DRAW") == 0) return 8;
+	if(strcmp(com, "COLOUR") == 0) return 9;
 	
 	return 0;
 }
@@ -671,6 +688,7 @@ int shapeConvert(char * com)
 	if(strcmp(com, "OCT") == 0) return 3;
 	if(strcmp(com, "SQUARE") == 0) return 4;
 	if(strcmp(com, "HOUSE") == 0) return 5;
+	if(strcmp(com, "ICOSAHEDRON") == 0) return 6;
 	
 	return 0;
 }
