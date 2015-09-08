@@ -59,10 +59,10 @@ void objectDeInit(Object *o)
 	//free(o->verts);
 	
 	int i;
-	printf("polynum = %d\n", o->polynum);
+	//printf("polynum = %d\n", o->polynum);
 	for(i=0; i<o->polynum; i++){
 		free(o->polys[i]);
-		printf("%d\n", i);
+		//printf("%d\n", i);
 	}
 	
 	free(o->polys);
@@ -234,7 +234,7 @@ Object new_icosahedron()
 	
 	int poly1[4] = {1, 9, 5, 0};
 	int poly2[4] = {1, 6, 11, 0};
-	int poly3[4] = {3, 4, 10, 0};
+	int poly3[4] = {3, 5, 10, 0};
 	int poly4[4] = {3, 12, 6, 0};
 	int poly5[4] = {2, 7, 9, 0};
 	int poly6[4] = {2, 11, 8, 0};

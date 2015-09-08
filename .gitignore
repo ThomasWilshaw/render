@@ -1,5 +1,10 @@
 *.exe
+
 *.o
+
 test.txt
+
 *.ppm
+
 save.txt
+*.txt

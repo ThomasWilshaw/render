@@ -554,7 +554,7 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 	
 	/*Create translation stack*/
 	stackT transformStack;
-	stackInit(&transformStack, 10);
+	stackInit(&transformStack, 5);
 	
 	/*Transform matrix*/
 	Matrix C;
@@ -592,7 +592,6 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 		}
 		com = realloc(com, sizeof(char*) * (spaces+1));
 		com[spaces] = 0;
-		
 		switch(comConvert(com[0])){
 			case 1://tran
 				C = tran(C, atof(com[1]), atof(com[2]), atof(com[3]));
@@ -674,8 +673,8 @@ int comConvert(char *com){
 	if(strcmp(com, "PERS") == 0) return 2;
 	if(strcmp(com, "ROT") == 0) return 3;
 	if(strcmp(com, "SCAL") == 0) return 4;
-	if(strcmp(com, "POP") == 0) return 5;
-	if(strcmp(com, "PUSH") == 0) return 6;
+	if(strcmp(com, "POP") == 0 || strcmp(com, "POP\n") == 0) return 5;
+	if(strcmp(com, "PUSH") == 0 || strcmp(com, "PUSH\n") == 0) return 6;
 	if(strcmp(com, "ORTH") == 0) return 7;
 	if(strcmp(com, "DRAW") == 0) return 8;
 	if(strcmp(com, "COLOUR") == 0) return 9;

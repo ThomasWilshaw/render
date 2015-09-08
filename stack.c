@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include<stdlib.h> /*for dynamic allocation*/
+#include <stdlib.h> /*for dynamic allocation*/
 #include "stack.h"
 
 void stackInit(stackT *stackP, int maxSize)
@@ -33,8 +33,10 @@ void stackPush(stackT *stackP, stackElementT element)
 		fprintf(stderr, "Can't push onto stack, stack is full.");
 		exit(EXIT_FAILURE);
 	}
-	
-	stackP->contents[++stackP->top] = element;
+	stackP->top++;
+	stackP->contents[stackP->top].rows = element.rows;
+	stackP->contents[stackP->top].cols = element.cols;
+	stackP->contents[stackP->top].t = element.t;
 }
 
 stackElementT stackPop(stackT *stackP)
@@ -44,7 +46,12 @@ stackElementT stackPop(stackT *stackP)
 		exit(EXIT_FAILURE);
 	}
 	
-	return stackP->contents[stackP->top--];
+	stackElementT r;
+	r = new_matrix(stackP->contents[stackP->top].rows, stackP->contents[stackP->top].cols);
+	r.t = stackP->contents[stackP->top].t;
+	stackP->top--;
+	
+	return r;
 }
 
 int stackIsEmpty(stackT *stackP)
