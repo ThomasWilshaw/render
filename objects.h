@@ -181,6 +181,37 @@ Object new_cube()
 	return cube;
 }
 
+Object new_pyramid()
+{
+	Object pyramid;
+	pyramid.vertnum = 5;
+	pyramid.polynum = 5;
+	double verts[20] = {1, 1, 0, 1, 1, -1, 0, 1, -1, -1, 0, 1, -1, 1, 0, 1, 0, 0, 1.5, 1};
+	pyramid.polys = (int **)malloc(sizeof(int) * pyramid.polynum);
+	
+	pyramid.polys[0] = (int *)malloc(sizeof(int) * 4);
+	pyramid.polys[1] = (int *)malloc(sizeof(int) * 4);
+	pyramid.polys[2] = (int *)malloc(sizeof(int) * 4);
+	pyramid.polys[3] = (int *)malloc(sizeof(int) * 4);
+	pyramid.polys[4] = (int *)malloc(sizeof(int) * 5);//base
+	
+	int poly1[4] = {5, 2, 1, 0};
+	int poly2[4] = {5, 3, 2, 0};
+	int poly3[4] = {5, 4, 3, 0};
+	int poly4[4] = {5, 1, 4, 0};
+	int poly5[5] = {1, 2, 3, 4, 0};
+	
+	pyramid.verts = malloc(sizeof(double) * 20);
+	memcpy(pyramid.verts, verts, sizeof(verts));
+	
+	memcpy(pyramid.polys[0], &poly1, sizeof(poly1));
+	memcpy(pyramid.polys[1], &poly2, sizeof(poly2));
+	memcpy(pyramid.polys[2], &poly3, sizeof(poly3));
+	memcpy(pyramid.polys[3], &poly4, sizeof(poly4));
+	memcpy(pyramid.polys[4], &poly5, sizeof(poly5));
+	return pyramid;
+}
+
 Object new_oct()
 {
 	Object oct;

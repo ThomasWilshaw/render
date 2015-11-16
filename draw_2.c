@@ -643,6 +643,10 @@ void drawFromFile(Image *i, FILE *save, FILE *f)
 						o = new_icosahedron();
 						pass = 1;
 						break;
+					case 7:
+						o = new_pyramid();
+						pass = 1;
+						break;
 					default:
 						break;
 				}
@@ -691,6 +695,7 @@ int shapeConvert(char * com)
 	if(strcmp(com, "SQUARE") == 0) return 4;
 	if(strcmp(com, "HOUSE") == 0) return 5;
 	if(strcmp(com, "ICOSAHEDRON") == 0) return 6;
+	if(strcmp(com, "PYRAMID") == 0) return 7;
 	
 	return 0;
 }
